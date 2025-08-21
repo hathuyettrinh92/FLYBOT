@@ -1,0 +1,1 @@
+worker: python fly_bot.py
