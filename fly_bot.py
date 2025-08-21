@@ -14,14 +14,18 @@ LINK_SHEET = "https://docs.google.com/spreadsheets/d/1BMfeBceFx9wRDHvuyYyzcRb03a
 
 # ------------ GOOGLE SHEET -----------------
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH")
 
-if not GOOGLE_CREDENTIALS_PATH:
-    raise ValueError("Biến môi trường GOOGLE_CREDENTIALS_PATH bị thiếu.")
+google_credentials = os.getenv("GOOGLE_CREDENTIALS")
+if not google_credentials:
+    raise ValueError("Thiếu biến môi trường GOOGLE_CREDENTIALS")
 
-CREDS = service_account.Credentials.from_service_account_file(
-    GOOGLE_CREDENTIALS_PATH, scopes=SCOPES
+# Convert chuỗi JSON trong Railway thành dict
+creds_info = json.loads(google_credentials)
+
+CREDS = service_account.Credentials.from_service_account_info(
+    creds_info, scopes=SCOPES
 )
+
 service = build('sheets', 'v4', credentials=CREDS)
 
 def append_to_sheet(sheet_name, values):
