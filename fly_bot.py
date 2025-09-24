@@ -19,7 +19,6 @@ google_credentials = os.getenv("GOOGLE_CREDENTIALS")
 if not google_credentials:
     raise ValueError("Thiếu biến môi trường GOOGLE_CREDENTIALS")
 
-# Convert chuỗi JSON trong Railway thành dict
 creds_info = json.loads(google_credentials)
 
 CREDS = service_account.Credentials.from_service_account_info(
@@ -59,11 +58,9 @@ async def has_pilot_role(interaction: discord.Interaction):
 @app_commands.describe(ngay="Ngày (VD: 20/7/2025)", so_luong="Số lượng man rợ đã kéo")
 async def keo_man(interaction: discord.Interaction, ngay: str, so_luong: int):
     if not await has_pilot_role(interaction):
-        await interaction.response.defer(thinking=True)
-        await interaction.followup.send("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
+        await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
-    await interaction.response.defer(thinking=True)
-    await interaction.followup.send("Gửi ảnh chuỗi man rợ, nhắn `done` khi xong.")
+    await interaction.response.send_message("📸 Gửi ảnh chuỗi man rợ, nhắn `done` khi xong.")
     user_tasks[interaction.user.id] = {
         "sheet": "Kéo man",
         "ngay": ngay,
@@ -77,16 +74,13 @@ async def keo_man(interaction: discord.Interaction, ngay: str, so_luong: int):
 @app_commands.describe(ngay="Ngày (VD: 20/7/2025)", gio="Số giờ tham gia", phut="Số phút tham gia")
 async def war_gio(interaction: discord.Interaction, ngay: str, gio: int, phut: int):
     if not await has_pilot_role(interaction):
-        await interaction.response.defer(thinking=True)
-        await interaction.followup.send("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
+        await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
     if gio < 0 or phut < 0 or (gio == 0 and phut == 0):
-        await interaction.response.defer(thinking=True)
-        await interaction.followup.send("❌ Phải nhập giờ hoặc phút > 0.", ephemeral=True)
+        await interaction.response.send_message("❌ Phải nhập giờ hoặc phút > 0.", ephemeral=True)
         return
-    await interaction.response.defer(thinking=True)
-    await interaction.followup.send("Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
     so_luong = f"{gio}h{phut}p"
+    await interaction.response.send_message("📸 Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
     user_tasks[interaction.user.id] = {
         "sheet": "War - Giờ",
         "ngay": ngay,
@@ -100,23 +94,19 @@ async def war_gio(interaction: discord.Interaction, ngay: str, gio: int, phut: i
 @app_commands.describe(ngay="Ngày (VD: 20/7/2025)", kp="Số KP (chỉ nhập số, VD: 200 hoặc 200000000)")
 async def war_kp(interaction: discord.Interaction, ngay: str, kp: int):
     if not await has_pilot_role(interaction):
-        await interaction.response.defer(thinking=True)
-        await interaction.followup.send("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
+        await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
     if kp <= 0:
-        await interaction.response.defer(thinking=True)
-        await interaction.followup.send("❌ KP phải > 0.", ephemeral=True)
+        await interaction.response.send_message("❌ KP phải > 0.", ephemeral=True)
         return
-    await interaction.response.defer(thinking=True)
-    await interaction.followup.send("Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
+    await interaction.response.send_message("📸 Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
     user_tasks[interaction.user.id] = {
         "sheet": "War - KP",
         "ngay": ngay,
-        "so_luong": str(kp),  # lưu đúng số user nhập
+        "so_luong": str(kp),
         "images": [],
         "channel": interaction.channel
     }
-
 
 # ------------ BỆ THỜ -----------------
 @tree.command(name="be-tho", description="Ghi chú Bệ Thờ (ngày + giờ + phút)")
@@ -132,7 +122,7 @@ async def be_tho(interaction: discord.Interaction, ngay: str, gio: int = 0, phut
         await interaction.response.send_message("❌ Phải nhập giờ hoặc phút > 0.", ephemeral=True)
         return
 
-    await interaction.response.defer()
+    await interaction.response.defer(thinking=True)
     append_to_sheet("Bệ thờ", [ngay, interaction.user.name, gio, phut, f"#{interaction.channel.name}"])
     await interaction.followup.send("✅ Đã ghi nhận Bệ Thờ!")
 
@@ -143,18 +133,17 @@ async def ark(interaction: discord.Interaction, ngay: str):
     if not await has_pilot_role(interaction):
         await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
-    await interaction.response.defer()
+    await interaction.response.defer(thinking=True)
     append_to_sheet("Ark", [ngay, interaction.user.name, f"#{interaction.channel.name}"])
     await interaction.followup.send("✅ Đã ghi nhận Ark!")
 
 # ------------ XEM SHEET -----------------
 @tree.command(name="xem-sheet", description="Xem link Google Sheet")
 async def xem_sheet(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True)
     if not interaction.user.guild_permissions.manage_guild:
-        await interaction.followup.send("❌ Bạn không đủ quyền để xem Google Sheet này.", ephemeral=True)
+        await interaction.response.send_message("❌ Bạn không đủ quyền để xem Google Sheet này.", ephemeral=True)
         return
-    await interaction.followup.send(f"📄 Link tổng hợp: {LINK_SHEET}", ephemeral=True)
+    await interaction.response.send_message(f"📄 Link tổng hợp: {LINK_SHEET}", ephemeral=True)
 
 # ------------ NHẬN ẢNH + DONE -----------------
 @client.event
