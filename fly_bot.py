@@ -164,21 +164,31 @@ async def on_message(message):
         if message.channel != task["channel"]:
             return
 
+        # Khi user gõ "done"
         if message.content.strip().lower() == "done":
-            links = [f"https://discord.com/channels/{message.guild.id}/{message.channel.id}/{msg.id}" for msg in task["images"]]
-            append_to_sheet(task["sheet"], [
-                task["ngay"],
-                message.author.name,
-                task["so_luong"],
-                f"#{message.channel.name}",
-                ", ".join(links) if links else "Không gửi ảnh"
-            ])
-            await message.channel.send("✅ Đã ghi nhận xong và lưu vào Google Sheet.")
-            del user_tasks[user_id]
+            try:
+                links = task["images"] if task["images"] else ["Không gửi ảnh"]
+                append_to_sheet(task["sheet"], [
+                    task["ngay"],
+                    message.author.name,
+                    task["so_luong"],
+                    f"#{message.channel.name}",
+                    ", ".join(links)
+                ])
+                await message.channel.send("✅ Đã ghi nhận xong và lưu vào Google Sheet.")
+            except Exception as e:
+                await message.channel.send(f"❌ Lỗi lưu Google Sheet: {e}")
+            finally:
+                del user_tasks[user_id]
             return
 
+        # Nếu user gửi ảnh thì lưu tất cả link ảnh trực tiếp
         if message.attachments:
-            task["images"].append(message)
+            for att in message.attachments:
+                task["images"].append(att.url)
+
+    # Để không block slash command khác
+    await client.process_commands(message)
 
 # ------------ READY -----------------
 @client.event
