@@ -91,29 +91,23 @@ async def war_gio(interaction: discord.Interaction, ngay: str, gio: int, phut: i
     }
 
 # ------------ WAR KP -----------------
-@tree.command(name="war-kp", description="Ghi chú WAR kiểu KP (ngày + KP số nguyên)")
-@app_commands.describe(ngay="Ngày (VD: 20/7/2025)", kp="Số KP (chỉ nhập số, VD: 200 hoặc 200000000)")
-async def war_kp(interaction: discord.Interaction, ngay: str, kp: int):
+@tree.command(name="war-kp", description="Ghi chú WAR kiểu KP (ngày + KP 200m, 1b,...)")
+@app_commands.describe(ngay="Ngày (VD: 20/7/2025)", kp="Số KP (VD: 200m, 2b, 1.5b)")
+async def war_kp(interaction: discord.Interaction, ngay: str, kp: str):
     if not await has_pilot_role(interaction):
         await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
-    
-    if kp <= 0:
-        await interaction.response.send_message("❌ KP phải > 0.", ephemeral=True)
+    if not kp.lower().endswith(("m", "b")):
+        await interaction.response.send_message("❌ KP phải có 'm' hoặc 'b' (VD: 200m, 2b).", ephemeral=True)
         return
-
-    await interaction.response.send_message(
-        "Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong."
-    )
-    
+    await interaction.response.send_message("Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
     user_tasks[interaction.user.id] = {
         "sheet": "War - KP",
         "ngay": ngay,
-        "so_luong": str(kp),  # lưu đúng số user nhập
+        "so_luong": kp,
         "images": [],
         "channel": interaction.channel
     }
-
 
 # ------------ BỆ THỜ -----------------
 @tree.command(name="be-tho", description="Ghi chú Bệ Thờ (ngày + giờ + phút)")
