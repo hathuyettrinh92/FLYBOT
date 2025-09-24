@@ -1,6 +1,7 @@
 import discord
 import json
 from discord import app_commands
+from discord.ext import commands
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import os
@@ -19,7 +20,7 @@ google_credentials = os.getenv("GOOGLE_CREDENTIALS")
 if not google_credentials:
     raise ValueError("Thiếu biến môi trường GOOGLE_CREDENTIALS")
 
-# Convert chuỗi JSON trong Railway thành dict
+# Convert chuỗi JSON trong Render thành dict
 creds_info = json.loads(google_credentials)
 
 CREDS = service_account.Credentials.from_service_account_info(
@@ -44,8 +45,8 @@ intents.message_content = True
 intents.guilds = True
 intents.members = True
 
-client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(client)
+bot = commands.Bot(command_prefix="!", intents=intents)
+tree = bot.tree
 
 user_tasks = {}  # user_id: {sheet, ngày, số_lượng, images[], channel}
 
@@ -61,7 +62,8 @@ async def keo_man(interaction: discord.Interaction, ngay: str, so_luong: int):
     if not await has_pilot_role(interaction):
         await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
-    await interaction.response.send_message("Gửi ảnh chuỗi man rợ, nhắn `done` khi xong.")
+    await interaction.response.defer()
+    await interaction.followup.send("Gửi ảnh chuỗi man rợ, nhắn `done` khi xong.")
     user_tasks[interaction.user.id] = {
         "sheet": "Kéo man",
         "ngay": ngay,
@@ -72,7 +74,7 @@ async def keo_man(interaction: discord.Interaction, ngay: str, so_luong: int):
 
 # ------------ WAR GIỜ -----------------
 @tree.command(name="war-gio", description="Ghi chú WAR kiểu Giờ (ngày + giờ + phút)")
-@app_commands.describe(ngay="Ngày (VD: 20/7/2025)", gio="Số giờ tham gia", phut="Số phút tham gia")
+@app_commands.describe(ngay="Ngày", gio="Số giờ", phut="Số phút")
 async def war_gio(interaction: discord.Interaction, ngay: str, gio: int, phut: int):
     if not await has_pilot_role(interaction):
         await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
@@ -80,7 +82,8 @@ async def war_gio(interaction: discord.Interaction, ngay: str, gio: int, phut: i
     if gio < 0 or phut < 0 or (gio == 0 and phut == 0):
         await interaction.response.send_message("❌ Phải nhập giờ hoặc phút > 0.", ephemeral=True)
         return
-    await interaction.response.send_message("Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
+    await interaction.response.defer()
+    await interaction.followup.send("Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
     so_luong = f"{gio}h{phut}p"
     user_tasks[interaction.user.id] = {
         "sheet": "War - Giờ",
@@ -92,50 +95,41 @@ async def war_gio(interaction: discord.Interaction, ngay: str, gio: int, phut: i
 
 # ------------ WAR KP -----------------
 @tree.command(name="war-kp", description="Ghi chú WAR kiểu KP (ngày + KP số nguyên)")
-@app_commands.describe(ngay="Ngày (VD: 20/7/2025)", kp="Số KP (chỉ nhập số, VD: 200 hoặc 200000000)")
+@app_commands.describe(ngay="Ngày", kp="Số KP (VD: 200000000)")
 async def war_kp(interaction: discord.Interaction, ngay: str, kp: int):
     if not await has_pilot_role(interaction):
         await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
-    
     if kp <= 0:
         await interaction.response.send_message("❌ KP phải > 0.", ephemeral=True)
         return
-
-    await interaction.response.send_message(
-        "Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong."
-    )
-    
+    await interaction.response.defer()
+    await interaction.followup.send("Gửi ảnh KP ban đầu, KP lúc hoàn thành, Kill và Heal trước sau, nhắn `done` khi xong.")
     user_tasks[interaction.user.id] = {
         "sheet": "War - KP",
         "ngay": ngay,
-        "so_luong": str(kp),  # lưu đúng số user nhập
+        "so_luong": str(kp),
         "images": [],
         "channel": interaction.channel
     }
 
-
 # ------------ BỆ THỜ -----------------
-@tree.command(name="be-tho", description="Ghi chú Bệ Thờ (ngày + giờ + phút)")
-@app_commands.describe(ngay="Ngày (VD: 20/7/2025)", gio="Giờ (>= 0)", phut="Phút (>= 0)")
+@tree.command(name="be-tho", description="Ghi chú Bệ Thờ")
+@app_commands.describe(ngay="Ngày", gio="Giờ", phut="Phút")
 async def be_tho(interaction: discord.Interaction, ngay: str, gio: int = 0, phut: int = 0):
     if not await has_pilot_role(interaction):
         await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
         return
-    if gio < 0 or phut < 0:
-        await interaction.response.send_message("❌ Giờ và phút không được âm.", ephemeral=True)
-        return
-    if gio == 0 and phut == 0:
+    if gio < 0 or phut < 0 or (gio == 0 and phut == 0):
         await interaction.response.send_message("❌ Phải nhập giờ hoặc phút > 0.", ephemeral=True)
         return
-
     await interaction.response.defer()
     append_to_sheet("Bệ thờ", [ngay, interaction.user.name, gio, phut, f"#{interaction.channel.name}"])
     await interaction.followup.send("✅ Đã ghi nhận Bệ Thờ!")
 
 # ------------ ARK -----------------
 @tree.command(name="ark", description="Ghi chú Ark (chỉ cần ngày)")
-@app_commands.describe(ngay="Ngày (VD: 20/7/2025)")
+@app_commands.describe(ngay="Ngày")
 async def ark(interaction: discord.Interaction, ngay: str):
     if not await has_pilot_role(interaction):
         await interaction.response.send_message("❌ Bạn cần role **Pilot** để dùng lệnh này.", ephemeral=True)
@@ -153,18 +147,15 @@ async def xem_sheet(interaction: discord.Interaction):
     await interaction.response.send_message(f"📄 Link tổng hợp: {LINK_SHEET}", ephemeral=True)
 
 # ------------ NHẬN ẢNH + DONE -----------------
-@client.event
+@bot.event
 async def on_message(message):
     if message.author.bot:
         return
-
     user_id = message.author.id
     if user_id in user_tasks:
         task = user_tasks[user_id]
         if message.channel != task["channel"]:
             return
-
-        # Khi user gõ "done"
         if message.content.strip().lower() == "done":
             try:
                 links = task["images"] if task["images"] else ["Không gửi ảnh"]
@@ -181,23 +172,19 @@ async def on_message(message):
             finally:
                 del user_tasks[user_id]
             return
-
-        # Nếu user gửi ảnh thì lưu tất cả link ảnh trực tiếp
         if message.attachments:
             for att in message.attachments:
                 task["images"].append(att.url)
-
-    # Để không block slash command khác
-    await client.process_commands(message)
+    await bot.process_commands(message)  # giờ dùng bot, không còn lỗi
 
 # ------------ READY -----------------
-@client.event
+@bot.event
 async def on_ready():
     await tree.sync()
-    print(f"{client.user} is ready!")
+    print(f"{bot.user} is ready!")
 
 # ------------ KEEP ALIVE -----------------
 from keep_alive import keep_alive
 keep_alive()
 
-client.run(TOKEN)
+bot.run(TOKEN)
